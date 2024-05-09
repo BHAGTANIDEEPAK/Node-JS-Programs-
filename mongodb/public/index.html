@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Management</title>
+</head>
+<body>
+  <h1>Users</h1>
+  <ul id="userList">
+    <!-- Users will be listed here -->
+  </ul>
+  <h2>Add User</h2>
+  <form id="addUserForm">
+    <label for="name">Name:</label>
+    <input type="text" id="name" name="name" />
+    <br />
+    <label for="email">Email:</label>
+    <input type="email" id="email" name="email" />
+    <br />
+    <label for="password">Password:</label>
+    <input type="password" id="password" name="password" />
+    <br />
+    <button type="submit">Add User</button>
+  </form>
+  <div id="editUserForm" style="display: none;">
+    <h2>Edit User</h2>
+    <form id="editForm">
+      <input type="hidden" id="editUserId" name="userId">
+      <label for="editName">Name:</label>
+      <input type="text" id="editName" name="name" />
+      <br />
+      <label for="editEmail">Email:</label>
+      <input type="email" id="editEmail" name="email" />
+      <br />
+      <button type="submit">Save</button>
+      <button type="button" onclick="cancelEdit()">Cancel</button>
+    </form>
+  </div>
+  <script>
+    const fetchUsers = () => {
+      fetch("/users")
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+          return response.json();
+        })
+        .then((users) => {
+          const userList = document.getElementById("userList");
+          userList.innerHTML = ""; // Clear previous user list
+          users.forEach((user) => {
+            const li = document.createElement("li");
+            li.textContent = `${user.name} - ${user.email}`;
+            const editButton = document.createElement("button");
+            editButton.textContent = "Edit";
+            editButton.addEventListener("click", () => {
+              editUser(user);
+            });
+            const deleteButton = document.createElement("button");
+            deleteButton.textContent = "Delete";
+            deleteButton.addEventListener("click", () => {
+              deleteUser(user._id);
+            });
+            li.appendChild(editButton);
+            li.appendChild(deleteButton);
+            userList.appendChild(li);
+          });
+        })
+        .catch((error) => {
+          console.error("Error fetching users:", error);
+        });
+    };
+
+    const editUser = (user) => {
+      document.getElementById("editUserId").value = user._id;
+      document.getElementById("editName").value = user.name;
+      document.getElementById("editEmail").value = user.email;
+      document.getElementById("editUserForm").style.display = "block";
+    };
+
+    const cancelEdit = () => {
+      document.getElementById("editUserForm").style.display = "none";
+    };
+
+    const saveEdit = () => {
+      const formData = new FormData(document.getElementById("editForm"));
+      const editedUser = {};
+      formData.forEach((value, key) => {
+        editedUser[key] = value;
+      });
+      const userId = editedUser.userId;
+      fetch(`/users/${userId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(editedUser),
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+          return response.json();
+        })
+        .then(() => {
+          fetchUsers(); // Refresh user list after update
+          cancelEdit(); // Hide edit form
+        })
+        .catch((error) => {
+          console.error("Error editing user:", error);
+        });
+    };
+
+    document.getElementById("editForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      saveEdit();
+    });
+
+    document
+      .getElementById("addUserForm")
+      .addEventListener("submit", (event) => {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        const newUser = {};
+        formData.forEach((value, key) => {
+          newUser[key] = value;
+        });
+        fetch("/users", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(newUser),
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Network response was not ok");
+            }
+            return response.json();
+          })
+          .then(() => {
+            fetchUsers(); // Refresh user list after addition
+            document.getElementById("addUserForm").reset(); // Reset form fields
+          })
+          .catch((error) => {
+            console.error("Error adding user:", error);
+          });
+      });
+
+    window.onload = fetchUsers;
+  </script>
+</body>
+</html>
